@@ -42,6 +42,7 @@ if completed_input.lower() == "да":
 else:
     is_completed = False
 
+
 game_date = date.today()
 duration_hours = duration_minutes / 60
 
@@ -65,5 +66,3 @@ print(check_duration(duration_minutes))
 print()
 print("Статус:")
 print(get_game_status(is_completed))
-
-print("------------------------------------------")
