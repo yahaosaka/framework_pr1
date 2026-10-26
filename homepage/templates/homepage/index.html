@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Главная – Учет партий{% endblock %}
+
+{% block content %}
+    <h1 class="display-5">Учет партий в настольные игры</h1>
+    <p class="lead">
+        Справочник игр, список игроков и история сыгранных партий.
+    </p>
+    <p>
+        Система проверяет количество участников и продолжительность партии,
+        хранит победителей и статус каждой партии.
+    </p>
+    <p>Основные разделы:</p>
+    <a href="{% url 'games:list' %}" class="btn btn-primary me-2">Игры</a>
+    <a href="{% url 'matches:list' %}" class="btn btn-secondary">Партии</a>
+{% endblock %}
