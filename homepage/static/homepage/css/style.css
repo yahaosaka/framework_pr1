@@ -1,0 +1,47 @@
+body {
+    min-height: 100vh;
+    background: #f6f4ef;
+}
+
+.site-header {
+    background: #2f3e46;
+    padding: 0.5rem 0;
+    margin-bottom: 1.5rem;
+}
+
+.site-logo {
+    width: 48px;
+    height: 48px;
+}
+
+.site-nav .nav-link {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.site-nav .nav-link:hover {
+    color: #f4a261;
+}
+
+.game-card,
+.match-card {
+    border: 1px solid #d8d2c4;
+    border-left: 6px solid #2a9d8f;
+    border-radius: 8px;
+}
+
+.match-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.match-status {
+    font-weight: 600;
+}
+
+.site-footer {
+    margin-top: 2rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
