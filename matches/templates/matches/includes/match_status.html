@@ -1,0 +1,9 @@
+{% if match.is_completed %}
+    <span class="badge bg-success match-status match-status-done">
+        Завершена
+    </span>
+{% else %}
+    <span class="badge bg-warning text-dark match-status match-status-active">
+        Идет
+    </span>
+{% endif %}

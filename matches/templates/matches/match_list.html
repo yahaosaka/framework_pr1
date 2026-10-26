@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Партии – Учет партий{% endblock %}
+
+{% block content %}
+    <h1>Партии</h1>
+    <p>Всего партий: {{ matches|length }}</p>
+
+    <ul class="list-group">
+        {% for match in matches %}
+            <li class="list-group-item match-row">
+                <div>
+                    <a href="{% url 'matches:detail' match.id %}">
+                        Партия №{{ match.id }}
+                    </a>
+                    – {{ match.game.title }},
+                    {{ match.played_on|date:"d.m.Y" }},
+                    {{ match.player_count }} игр.
+                    {% if match.winner %}
+                        · победитель: {{ match.winner.name }}
+                    {% endif %}
+                </div>
+                {% include "matches/includes/match_status.html" %}
+            </li>
+        {% empty %}
+            <li class="list-group-item">Партии не найдены.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}
