@@ -3,7 +3,8 @@
 ## Назначение
 
 Консольная версия (ПР3) дополнена веб-интерфейсом на Django (ПР5),
-страницы которого формируются шаблонами Django (ПР6).
+страницы которого формируются шаблонами Django (ПР6), а данные
+хранятся в базе SQLite и получаются SQL-запросами (ПР7).
 
 Приложение для учета партий в настольные игры: хранит справочник игр,
 список игроков и сыгранные партии, проверяет введенные данные и считает
@@ -44,7 +45,7 @@
 * ~~обработка исключений~~ (ПР2);
 * ~~реализация классов предметной области~~ (ПР3);
 * ~~разработка веб-приложения на Django~~ (ПР5);
-* подключение базы данных;
+* ~~подключение базы данных~~ (ПР7);
 * реализация пользователей;
 * разработка REST API;
 * контейнеризация приложения;
@@ -87,6 +88,50 @@
 коллекциями `List[Game]`, `List[Player]`, `List[Match]`; операции над
 одним объектом вынесены в методы классов.
 
+## База данных SQLite (ПР7)
+
+Данные перенесены из JSON в базу `data/boardgames.sqlite`. Django ORM на
+этом этапе не используется: представления выполняют SQL-запросы через
+модуль `sqlite3`.
+
+| Таблица | Поля (тип) | Ключи |
+|---------|------------|-------|
+| `games` | `id` INTEGER, `title` TEXT, `min_players` INTEGER, `max_players` INTEGER, `genre` TEXT | PK `id` |
+| `players` | `id` INTEGER, `name` TEXT, `email` TEXT | PK `id` |
+| `matches` | `id` INTEGER, `game_id` INTEGER, `match_date` TEXT (ГГГГ-ММ-ДД), `duration_minutes` INTEGER, `winner_id` INTEGER (может быть NULL), `is_completed` INTEGER (0/1) | PK `id`; FK `game_id` → `games.id`, `winner_id` → `players.id` |
+| `match_players` | `match_id` INTEGER, `player_id` INTEGER | PK (`match_id`, `player_id`); FK → `matches.id`, `players.id` |
+
+* `sql/schema.sql` – создание таблиц (`CREATE TABLE IF NOT EXISTS`,
+  ограничения `NOT NULL`, `CHECK`, `UNIQUE`, `DEFAULT`);
+* `db/database.py` – подключение (`get_connection()` с
+  `PRAGMA foreign_keys = ON`), создание схемы, функции `fetch_all()` и
+  `fetch_one()` с `row_factory = sqlite3.Row`;
+* `db/import_json.py` – перенос данных из JSON (`executemany()`,
+  параметры `?`, `commit()`/`rollback()`);
+* `sql/queries.sql` – 18 проверенных запросов: списки, `WHERE`
+  (в том числе `BETWEEN`, `LIKE`), `JOIN`/`LEFT JOIN`, агрегатные
+  функции, `GROUP BY`, `HAVING`, подзапрос `NOT IN`, `LIMIT/OFFSET`.
+
+Создание базы и перенос данных:
+
+```text
+python -m db.import_json
+```
+
+Страницы, получающие данные из SQLite:
+
+| URL | Данные |
+|-----|--------|
+| `/games/` | список игр (SELECT … ORDER BY) |
+| `/games/<id>/` | игра и ее партии (WHERE, LEFT JOIN) |
+| `/games/search/?players=5` | подбор игр по числу игроков (параметризованный WHERE) |
+| `/matches/` | партии с названием игры и победителем (JOIN) |
+| `/matches/<id>/` | партия и ее участники (JOIN через `match_players`) |
+| `/matches/statistics/` | итоги (COUNT, SUM, AVG, MIN, MAX), партии по играм и рейтинг игроков (GROUP BY), популярные игры (HAVING), жанры, несыгранные игры (NOT IN) |
+
+Значения от пользователя передаются только параметрами `?`; f-строки для
+подстановки значений в SQL не используются.
+
 ## Хранение данных
 
 JSON-файлы `data/games.json`, `data/players.json`, `data/matches.json`.
@@ -96,6 +141,10 @@ JSON ↔ объекты выполняет `storage.py`: при загрузке
 находятся объекты `Game` и `Player`, при сохранении ссылки заменяются
 идентификаторами.
 
+Исходные данные (ПР3–ПР6) хранятся в JSON-файлах; в ПР7 они перенесены
+в базу SQLite (`python -m db.import_json`), веб-страницы читают данные из
+базы SQL-запросами.
+
 ## Используемые технологии
 
 * Python 3;
@@ -103,6 +152,7 @@ JSON ↔ объекты выполняет `storage.py`: при загрузке
 * Django Template Language (DTL) – шаблоны страниц;
 * HTML5, собственный CSS3 и Bootstrap 5.3 – разметка и оформление;
 * JavaScript – небольшое поведение интерфейса;
+* SQLite и модуль sqlite3 – база данных и SQL-запросы;
 * pytest – автоматизированные тесты;
 * flake8 – проверка качества кода.
 
@@ -169,11 +219,13 @@ framework_pr1/
 ├── homepage/        главная страница, static (css, js, img), шаблон index.html
 ├── games/           представления игр, templates/games/ (+ includes/game_card.html)
 ├── matches/         представления партий, templates/matches/ (+ includes/match_status.html)
+├── sql/             schema.sql, queries.sql
+├── db/              database.py, import_json.py
 ├── main.py          консольное меню (ПР3)
 ├── storage.py       загрузка и сохранение JSON
 ├── utils.py         безопасный ввод чисел и дат
 ├── models/          классы Game, Player, Match и функции работы с ними
-├── data/            JSON-файлы
+├── data/            JSON-файлы и база boardgames.sqlite
 └── tests/           тесты pytest
 ```
 
@@ -186,6 +238,7 @@ framework_pr1/
 
 ```text
 pip install -r requirements.txt
+python -m db.import_json
 python manage.py migrate
 python manage.py runserver
 ```
@@ -216,7 +269,10 @@ flake8 . --extend-exclude=venv
 циклы и условия, фильтры, именованные URL и namespaces, собственные CSS,
 JavaScript и изображение.
 
-Данные пока хранятся в JSON, Django ORM и формы не используются.
+Реализовано (ПР7): база SQLite, схема и импорт из JSON, 18 SQL-запросов,
+страницы на данных из SQLite: списки, подбор игры, статистика.
 
-Планируется: база данных, Django ORM,
+Django ORM и формы пока не используются.
+
+Планируется: переход на Django ORM,
 формы создания партий, API.
