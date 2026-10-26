@@ -1,6 +1,6 @@
 """Работа с настольными играми (данные хранятся в словаре games)."""
 
-from typing import Dict, List
+from typing import Dict, Iterable, Iterator, List
 
 MIN_PLAYERS = 2
 MAX_PLAYERS = 6
@@ -79,9 +79,9 @@ def sort_games(games: Dict[int, dict], by: str = "title") -> List[dict]:
     return sorted(games.values(), key=lambda game: game["title"])
 
 
-def iter_game_lines(games: Dict[int, dict]):
+def iter_game_lines(games: Iterable[dict]) -> Iterator[str]:
     """Генератор строк для вывода списка игр."""
-    for game in games.values():
+    for game in games:
         yield (
             f"{game['id']:>3}. {game['title']:<22}"
             f"{game['min_players']}-{game['max_players']} игр.  "
