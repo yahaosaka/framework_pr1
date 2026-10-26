@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if game %}{{ game.title }}{% else %}Игра не найдена{% endif %} – Учет партий
+{% endblock %}
+
+{% block content %}
+    {% if game %}
+        <div class="card game-card">
+            <div class="card-body">
+                <h1 class="card-title">{{ game.title }}</h1>
+                <p class="card-text"><strong>ID:</strong> {{ game.id }}</p>
+                <p class="card-text">
+                    <strong>Жанр:</strong> {{ game.genre|default:"не указан" }}
+                </p>
+                <p class="card-text">
+                    <strong>Игроков:</strong>
+                    от {{ game.min_players }} до {{ game.max_players }}
+                </p>
+            </div>
+        </div>
+
+        <h2 class="h4 mt-4">Партии в эту игру ({{ matches|length }})</h2>
+        <ul class="list-group">
+            {% for match in matches %}
+                <li class="list-group-item d-flex justify-content-between">
+                    <a href="{% url 'matches:detail' match.id %}">
+                        {{ match.played_on|date:"d.m.Y" }}
+                    </a>
+                    {% include "matches/includes/match_status.html" %}
+                </li>
+            {% empty %}
+                <li class="list-group-item">В эту игру еще не играли.</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <h1 class="text-danger">Игра не найдена</h1>
+        <p>Игра с указанным идентификатором отсутствует.</p>
+    {% endif %}
+
+    <a href="{% url 'games:list' %}" class="btn btn-outline-secondary mt-3">
+        ← к списку игр
+    </a>
+{% endblock %}
