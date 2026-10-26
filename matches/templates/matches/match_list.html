@@ -13,11 +13,11 @@
                     <a href="{% url 'matches:detail' match.id %}">
                         Партия №{{ match.id }}
                     </a>
-                    – {{ match.game.title }},
+                    – {{ match.game_title }},
                     {{ match.played_on|date:"d.m.Y" }},
                     {{ match.player_count }} игр.
-                    {% if match.winner %}
-                        · победитель: {{ match.winner.name }}
+                    {% if match.winner_name %}
+                        · победитель: {{ match.winner_name }}
                     {% endif %}
                 </div>
                 {% include "matches/includes/match_status.html" %}

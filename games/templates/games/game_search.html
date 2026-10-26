@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Подбор игры – Учет партий{% endblock %}
+
+{% block content %}
+    <h1>Подбор игры</h1>
+    <p>Укажите, сколько человек собирается играть.</p>
+
+    <form method="get" class="search-form mb-4">
+        <label for="players" class="form-label">Количество игроков:</label>
+        <input
+            type="number"
+            id="players"
+            name="players"
+            min="1"
+            value="{{ players_value }}"
+            class="form-control"
+        >
+        <button type="submit" class="btn btn-primary">Найти</button>
+    </form>
+
+    {% if error %}
+        <p class="text-danger">{{ error }}</p>
+    {% elif player_count %}
+        <h2 class="h4">Игры для {{ player_count }} игроков: {{ games|length }}</h2>
+        {% for game in games %}
+            {% include "games/includes/game_card.html" %}
+        {% empty %}
+            <p>Подходящих игр нет.</p>
+        {% endfor %}
+    {% endif %}
+
+    <a href="{% url 'games:list' %}" class="btn btn-outline-secondary mt-3">
+        ← ко всем играм
+    </a>
+{% endblock %}

@@ -11,8 +11,8 @@
                 <h1 class="card-title">Партия №{{ match.id }}</h1>
                 <p class="card-text">
                     <strong>Игра:</strong>
-                    <a href="{% url 'games:detail' match.game.id %}">
-                        {{ match.game.title }}
+                    <a href="{% url 'games:detail' match.game_id %}">
+                        {{ match.game_title }}
                     </a>
                 </p>
                 <p class="card-text">
@@ -24,15 +24,19 @@
                     ({{ match.duration_hours|floatformat:1 }} ч)
                     – {{ duration_check }}
                 </p>
-                <p class="card-text"><strong>Участники:</strong></p>
+                <p class="card-text">
+                    <strong>Участники ({{ players|length }}):</strong>
+                </p>
                 <ul>
-                    {% for player in match.players %}
+                    {% for player in players %}
                         <li>{{ player.name }}</li>
+                    {% empty %}
+                        <li>Участники не указаны.</li>
                     {% endfor %}
                 </ul>
                 <p class="card-text">
                     <strong>Победитель:</strong>
-                    {{ match.winner.name|default:"не определен" }}
+                    {{ match.winner_name|default:"не определен" }}
                 </p>
                 <p class="card-text">
                     <strong>Статус:</strong>

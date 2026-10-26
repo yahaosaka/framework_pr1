@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика – Учет партий{% endblock %}
+
+{% block content %}
+    <h1>Статистика</h1>
+
+    <div class="stats-grid mb-4">
+        <div class="stat-tile">
+            <span class="stat-value">{{ totals.matches_count }}</span>
+            <span class="stat-label">всего партий</span>
+        </div>
+        <div class="stat-tile">
+            <span class="stat-value">{{ totals.completed_count|default:0 }}</span>
+            <span class="stat-label">завершено</span>
+        </div>
+        <div class="stat-tile">
+            <span class="stat-value">{{ totals.avg_minutes|default:"—" }}</span>
+            <span class="stat-label">мин. в среднем</span>
+        </div>
+        <div class="stat-tile">
+            <span class="stat-value">
+                {{ totals.min_minutes|default:"—" }}–{{ totals.max_minutes|default:"—" }}
+            </span>
+            <span class="stat-label">мин. самая короткая и длинная</span>
+        </div>
+    </div>
+
+    <h2 class="h4">Партии по играм</h2>
+    <table class="table table-sm stats-table">
+        <thead>
+            <tr><th>Игра</th><th>Партий</th><th>Средняя длительность, мин</th></tr>
+        </thead>
+        <tbody>
+            {% for item in by_game %}
+                <tr>
+                    <td>
+                        <a href="{% url 'games:detail' item.game_id %}">
+                            {{ item.game_title }}
+                        </a>
+                    </td>
+                    <td>{{ item.matches_count }}</td>
+                    <td>{{ item.avg_minutes|default:"—" }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="3">Данные отсутствуют.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2 class="h4">Рейтинг игроков</h2>
+    <table class="table table-sm stats-table">
+        <thead><tr><th>Игрок</th><th>Сыграно</th><th>Побед</th></tr></thead>
+        <tbody>
+            {% for player in rating %}
+                <tr>
+                    <td>{{ player.name }}</td>
+                    <td>{{ player.played }}</td>
+                    <td>{{ player.wins }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="3">Данные отсутствуют.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2 class="h4">Популярные игры</h2>
+    <form method="get" class="search-form mb-2">
+        <label for="min" class="form-label">Сыграно больше чем:</label>
+        <input type="number" id="min" name="min" min="0"
+               value="{{ min_matches }}" class="form-control">
+        <button type="submit" class="btn btn-primary">Показать</button>
+    </form>
+    <ul class="list-group mb-4">
+        {% for item in popular %}
+            <li class="list-group-item">
+                {{ item.game_title }} – партий: {{ item.matches_count }}
+            </li>
+        {% empty %}
+            <li class="list-group-item">Таких игр нет.</li>
+        {% endfor %}
+    </ul>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h2 class="h4">Игры по жанрам</h2>
+            <ul>
+                {% for item in by_genre %}
+                    <li>{{ item.genre|default:"без жанра"|capfirst }}: {{ item.games_count }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col-md-6">
+            <h2 class="h4">Еще не сыграны</h2>
+            <ul>
+                {% for game in unplayed %}
+                    <li>
+                        <a href="{% url 'games:detail' game.id %}">{{ game.title }}</a>
+                    </li>
+                {% empty %}
+                    <li>Сыграны все игры.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endblock %}

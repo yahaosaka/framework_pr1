@@ -4,7 +4,10 @@
 
 {% block content %}
     <h1>Настольные игры</h1>
-    <p>Всего игр: {{ games|length }}</p>
+    <p>
+        Всего игр: {{ games|length }} ·
+        <a href="{% url 'games:search' %}">Подобрать игру по числу игроков</a>
+    </p>
 
     {% for game in games %}
         {% include "games/includes/game_card.html" %}
