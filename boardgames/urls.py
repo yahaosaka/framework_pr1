@@ -6,6 +6,7 @@ from django.urls import include, path
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("homepage.urls")),
+    path("games/", include("games.urls")),
 ]
 
 handler404 = "homepage.views.page_not_found"
