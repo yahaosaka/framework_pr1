@@ -2,7 +2,8 @@
 
 ## Назначение
 
-Консольная версия (ПР3) дополнена веб-интерфейсом на Django (ПР5).
+Консольная версия (ПР3) дополнена веб-интерфейсом на Django (ПР5),
+страницы которого формируются шаблонами Django (ПР6).
 
 Приложение для учета партий в настольные игры: хранит справочник игр,
 список игроков и сыгранные партии, проверяет введенные данные и считает
@@ -99,7 +100,9 @@ JSON ↔ объекты выполняет `storage.py`: при загрузке
 
 * Python 3;
 * Django 5.2 – веб-фреймворк;
-* HTML, CSS и Bootstrap 5.3 – разметка и оформление страниц;
+* Django Template Language (DTL) – шаблоны страниц;
+* HTML5, собственный CSS3 и Bootstrap 5.3 – разметка и оформление;
+* JavaScript – небольшое поведение интерфейса;
 * pytest – автоматизированные тесты;
 * flake8 – проверка качества кода.
 
@@ -118,9 +121,33 @@ JSON ↔ объекты выполняет `storage.py`: при загрузке
 используется собственный обработчик `handler404`
 (`homepage.views.page_not_found`).
 
-Функция `page()` в `homepage/views.py` формирует общий HTML-каркас
-(кодировка, заголовок, Bootstrap 5.3, навигация); остальные приложения
-импортируют ее.
+## Шаблоны Django (ПР6)
+
+Генерация HTML в Python-коде представлений не используется, функция
+`page()` удалена. Представления готовят данные и передают их в шаблоны
+через контекст: `render(request, "games/game_list.html", {"games": ...})`.
+
+* Базовый шаблон `templates/base.html`: структура документа, Bootstrap,
+  собственный CSS, логотип, навигация, подвал, JavaScript и блоки
+  `{% block title %}` и `{% block content %}`.
+* Наследование: все страницы начинаются с `{% extends "base.html" %}`.
+* Включаемые шаблоны: `templates/includes/navigation.html`,
+  `games/includes/game_card.html` (карточка игры),
+  `matches/includes/match_status.html` (статус партии – используется
+  в списке партий, на странице партии и на странице игры).
+* Циклы `{% for %}` с `{% empty %}` и условия `{% if %}` (наличие объекта,
+  статус партии, наличие победителя).
+* Именованные URL и пространства имен: `homepage:index`, `games:list`,
+  `games:detail`, `matches:list`, `matches:detail`; все ссылки строятся
+  тегом `{% url %}`.
+* Фильтры: `length` (количество игр и партий), `default` (пустой жанр,
+  отсутствующий победитель), `capfirst`, `date` (дата партии через свойство
+  `Match.played_on`), `floatformat` (продолжительность в часах).
+* Статические файлы `homepage/static/homepage/`: `css/style.css`
+  (шапка, карточки, статусы), `js/main.js` (текущий год в подвале),
+  `img/logo.png` (логотип); подключаются через `{% load static %}` и
+  `{% static %}`.
+* Собственная страница 404 – шаблон `templates/404.html`.
 
 ### Используется в веб-интерфейсе (ПР5)
 
@@ -138,9 +165,10 @@ JSON ↔ объекты выполняет `storage.py`: при загрузке
 framework_pr1/
 ├── manage.py
 ├── boardgames/      настройки Django-проекта (settings.py, urls.py, wsgi/asgi)
-├── homepage/        главная страница, page(), обработчик 404
-├── games/           страницы игр (views.py, urls.py)
-├── matches/         страницы партий (views.py, urls.py)
+├── templates/       base.html, 404.html, includes/navigation.html
+├── homepage/        главная страница, static (css, js, img), шаблон index.html
+├── games/           представления игр, templates/games/ (+ includes/game_card.html)
+├── matches/         представления партий, templates/matches/ (+ includes/match_status.html)
 ├── main.py          консольное меню (ПР3)
 ├── storage.py       загрузка и сохранение JSON
 ├── utils.py         безопасный ввод чисел и дат
@@ -184,5 +212,11 @@ flake8 . --extend-exclude=venv
 маршрутизация, view-функции, страницы предметной области, обработка 404,
 навигация, оформление Bootstrap.
 
-Планируется: шаблоны Django и отказ от `page()`, база данных, Django ORM,
+Реализовано (ПР6): шаблоны Django, наследование, include, контекст,
+циклы и условия, фильтры, именованные URL и namespaces, собственные CSS,
+JavaScript и изображение.
+
+Данные пока хранятся в JSON, Django ORM и формы не используются.
+
+Планируется: база данных, Django ORM,
 формы создания партий, API.
