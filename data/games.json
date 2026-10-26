@@ -1,8 +1,44 @@
 [
-    {"id": 1, "title": "Каркассон", "min_players": 2, "max_players": 5, "genre": "стратегия"},
-    {"id": 2, "title": "Колонизаторы", "min_players": 3, "max_players": 4, "genre": "стратегия"},
-    {"id": 3, "title": "Уно", "min_players": 2, "max_players": 6, "genre": "карточная"},
-    {"id": 4, "title": "Диксит", "min_players": 3, "max_players": 6, "genre": "вечериночная"},
-    {"id": 5, "title": "Шакал", "min_players": 2, "max_players": 4, "genre": "приключения"},
-    {"id": 6, "title": "Кодовые имена", "min_players": 4, "max_players": 6, "genre": "вечериночная"}
+    {
+        "id": 1,
+        "title": "Каркассон",
+        "min_players": 2,
+        "max_players": 5,
+        "genre": "стратегия"
+    },
+    {
+        "id": 2,
+        "title": "Колонизаторы",
+        "min_players": 3,
+        "max_players": 4,
+        "genre": "стратегия"
+    },
+    {
+        "id": 3,
+        "title": "Уно",
+        "min_players": 2,
+        "max_players": 6,
+        "genre": "карточная"
+    },
+    {
+        "id": 4,
+        "title": "Диксит",
+        "min_players": 3,
+        "max_players": 6,
+        "genre": "вечериночная"
+    },
+    {
+        "id": 5,
+        "title": "Шакал",
+        "min_players": 2,
+        "max_players": 4,
+        "genre": "приключения"
+    },
+    {
+        "id": 6,
+        "title": "Кодовые имена",
+        "min_players": 4,
+        "max_players": 6,
+        "genre": "вечериночная"
+    }
 ]
