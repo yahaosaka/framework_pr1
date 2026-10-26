@@ -1,5 +1,6 @@
 """Класс Match и функции работы с коллекцией партий (ПР3)."""
 
+from datetime import date
 from typing import List, Optional
 
 from models.games import Game
@@ -61,6 +62,11 @@ class Match:
     @property
     def status(self) -> str:
         return get_game_status(self.is_completed)
+
+    @property
+    def played_on(self) -> date:
+        """Дата партии как объект date (для шаблонов)."""
+        return date.fromisoformat(self.match_date)
 
     @property
     def duration_hours(self) -> float:

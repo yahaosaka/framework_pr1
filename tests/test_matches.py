@@ -98,3 +98,9 @@ def test_find_and_filter(data):
     assert find_match_by_id(matches, 2).game.title == "Уно"
     assert find_match_by_id(matches, 9) is None
     assert len(matches_for_game(matches, game)) == 1
+
+
+def test_played_on(data):
+    game, players = data
+    match = Match(1, game, "2026-10-17", 30, players)
+    assert match.played_on.day == 17
