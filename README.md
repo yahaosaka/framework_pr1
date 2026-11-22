@@ -134,3 +134,44 @@ Bootstrap 5.3, JavaScript, pytest, pytest-django, flake8.
 [yahaosaka/framework_pr1](https://github.com/yahaosaka/framework_pr1).
 ФИО, группу и вариант для титульной части отчета укажите самостоятельно.
 
+
+## Практическая работа №10
+
+Админка: http://127.0.0.1:8000/admin/. Для своего аккаунта выполните:
+
+```text
+python manage.py createsuperuser
+```
+
+Существующие аккаунты и пароли не меняются. Админка работает только
+для пользователей с is_staff; обычный Player не является учетной записью.
+
+- games/admin.py, players/admin.py, matches/admin.py — регистрация,
+  поиск, фильтры, inline, автодополнение и массовые действия.
+- matches/admin_forms.py — проверка состава и победителя при сохранении.
+- matches/querysets.py — active(), scheduled(), completed(), cancelled(),
+  for_date(), blocking().
+- matches/migrations/0003_pr10_status.py — заполнение status по старым
+  флагам. Флаги остаются для совместимости и синхронизируются с status.
+- games/migrations/0002_pr10_games.py — slug и GeneratedField.
+- /games/by-slug/<slug>/ — карточка игры, get_absolute_url(); старые ID
+  работают. Слаг существующей игры — game-ID, новой — из названия.
+- /games/available/?date=2026-11-22 — свободные игры на дату.
+  Предполагается один экземпляр: active/scheduled занимают игру,
+  completed/cancelled не занимают. Страница справочная, без запрета
+  параллельных записей на уровне сервиса создания партии.
+- GeneratedField is_large_group — max_players >= 5; refresh_from_db()
+  показывает новое значение после изменения исходного поля.
+- homepage/context_processors.py — site_title и games_count в подвале.
+- В списке партий дополнительно доступны player и date, помимо
+  прежних game, status, q, from, to, sort и page.
+- Django Debug Toolbar 6.2.0 включен при DEBUG вне тестов; открывать через
+  127.0.0.1. Панель SQL показывает реальные JOIN, COUNT и LIMIT.
+- 84 теста пройдены. Карточка выполняет три предметных запроса:
+  партия с FK, участники и общий счетчик игр из контекстного процессора.
+  Запросы Toolbar и авторизации анализируются отдельно.
+
+[Отчет](docs/practical_10.md) · [30 пунктов защиты](docs/defense_pr10.md).
+Не запускайте import_pr7 поверх измененных данных: это восстановит
+значения совпадающих записей из источника ПР7. Для обновления достаточно
+установить requirements.txt и применить migrate.

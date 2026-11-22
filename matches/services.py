@@ -10,7 +10,8 @@ def save_match(*, game, players, match_date, duration_minutes,
                is_completed=False, winner=None, match_id=None, status=None):
     """Проверить предложенное состояние и сохранить целиком."""
     if status is None:
-        status = "completed" if is_completed else "active"
+        status = (Match.Status.COMPLETED if is_completed
+                  else Match.Status.ACTIVE)
     if status not in Match.Status.values:
         raise ValidationError("Неизвестный статус.")
     is_completed = status == Match.Status.COMPLETED
@@ -25,7 +26,7 @@ def save_match(*, game, players, match_date, duration_minutes,
         raise ValidationError("Выберите победителя из участников.")
     candidate = Match(
         game=game, match_date=match_date, duration_minutes=duration_minutes,
-        is_completed=is_completed, is_scheduled=status == "scheduled",
+        status=status,
         winner=winner)
     candidate.full_clean()
     if match_id is None:
@@ -34,7 +35,7 @@ def save_match(*, game, players, match_date, duration_minutes,
         match = Match.objects.select_for_update().get(pk=match_id)
         for field in (
                 "game", "match_date", "duration_minutes",
-                "is_completed", "is_scheduled", "winner"):
+                "status", "is_completed", "is_scheduled", "winner"):
             setattr(match, field, getattr(candidate, field))
     match.save()
     match.players.set(players)
@@ -53,6 +54,7 @@ def change_status(match_id, status, winner):
         raise ValidationError("Выберите победителя из участников.")
     match.is_completed = is_completed
     match.is_scheduled = status == Match.Status.SCHEDULED
+    match.status = status
     match.winner = winner
     match.full_clean()
     match.save(update_fields=["is_completed", "is_scheduled", "winner"])
@@ -84,7 +86,7 @@ def finish_match(match_id, winner):
         raise ValidationError("Победитель должен участвовать в партии.")
     changed = Match.objects.filter(
         pk=match_id, is_completed=False).update(
-        winner=winner, is_completed=True, is_scheduled=False)
+        winner=winner, status=Match.Status.COMPLETED)
     if not changed:
         raise ValidationError("Партия уже завершена.")
     match.refresh_from_db()

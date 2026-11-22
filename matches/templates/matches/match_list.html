@@ -25,8 +25,15 @@
                 <option value="completed" {% if request.GET.status == "completed" %}selected{% endif %}>Завершена</option>
                 <option value="scheduled" {% if request.GET.status == "scheduled" %}selected{% endif %}>Будет идти</option>
                 <option value="active" {% if request.GET.status == "active" %}selected{% endif %}>Идет</option>
+                <option value="cancelled" {% if request.GET.status == "cancelled" %}selected{% endif %}>Отменена</option>
             </select>
         </label>
+        <label>Игрок <select name="player"><option value="">Все</option>
+            {% for player in players_filter %}
+                <option value="{{ player.pk }}" {% if request.GET.player == player.pk|stringformat:"s" %}selected{% endif %}>{{ player.name }}</option>
+            {% endfor %}
+        </select></label>
+        <label>Точная дата <input type="date" name="date" value="{{ request.GET.date }}"></label>
         <label>С <input type="date" name="from" value="{{ request.GET.from }}"></label>
         <label>По <input type="date" name="to" value="{{ request.GET.to }}"></label>
         <label>Порядок

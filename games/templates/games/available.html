@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Свободные игры{% endblock %}
+{% block content %}
+<h1>Свободные игры на дату</h1>
+<p>Учитывается один экземпляр каждой игры. «Идет» и «Будет идти» занимают
+игру на выбранный день; «Отменена» и «Завершена» ее не занимают.</p>
+<form method="get" class="mb-3">
+    <label>Дата <input type="date" name="date" value="{{ date_value }}" required></label>
+    <button class="btn btn-primary" type="submit">Проверить</button>
+</form>
+{% if error %}<p class="text-danger">{{ error }}</p>{% endif %}
+{% if selected_date %}
+<h2 class="h4">Доступны {{ selected_date|date:"d.m.Y" }}</h2>
+{% for game in games %}
+    {% include "games/includes/game_card.html" %}
+{% empty %}<p>Свободных игр нет.</p>{% endfor %}
+{% endif %}
+{% endblock %}

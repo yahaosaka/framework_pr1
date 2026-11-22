@@ -124,11 +124,11 @@ def test_searches_and_combined_filters(client, imported):
         "game": 1, "status": "completed", "from": "2026-09-10",
         "to": "2026-10-31", "sort": "-date",
     })
-    assert [m.pk for m in response.context["matches"]] == [7, 4]
+    assert [m["id"] for m in response.context["matches"]] == [7, 4]
     response = client.get("/matches/", {"status": "active"})
-    assert [m.pk for m in response.context["matches"]] == [8]
+    assert [m["id"] for m in response.context["matches"]] == [8]
     response = client.get("/matches/", {"q": "карточная"})
-    assert [m.pk for m in response.context["matches"]] == [2]
+    assert [m["id"] for m in response.context["matches"]] == [2]
 
 
 @pytest.mark.parametrize("params", [
@@ -172,7 +172,7 @@ def test_empty_database(client):
 
 def test_detail_query_count_is_constant(client, imported,
                                         django_assert_num_queries):
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(3):
         assert client.get("/matches/1/").status_code == 200
 
 

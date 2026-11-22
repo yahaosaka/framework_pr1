@@ -64,6 +64,8 @@ def import_source(source):
                 "duration_minutes": row["duration_minutes"],
                 "winner_id": row["winner_id"],
                 "is_completed": bool(row["is_completed"]),
+                "status": (Match.Status.COMPLETED if row["is_completed"]
+                           else Match.Status.ACTIVE),
                 "is_scheduled": False}
             # Проверяем поля до записи, состав проверен по источнику.
             candidate = Match(**defaults)

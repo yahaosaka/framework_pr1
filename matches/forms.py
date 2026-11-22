@@ -25,9 +25,10 @@ class StatusForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        if data.get("status") == "completed" and not data.get("winner"):
+        if (data.get("status") == Match.Status.COMPLETED
+                and not data.get("winner")):
             self.add_error("winner", "Выберите победителя из участников.")
-        if data.get("status") in ("active", "scheduled"):
+        if data.get("status") != Match.Status.COMPLETED:
             data["winner"] = None
         return data
 
@@ -57,9 +58,9 @@ class MatchForm(forms.Form):
                 self.add_error(
                     "players", f"Для этой игры нужно от {game.min_players} "
                     f"до {game.max_players} участников.")
-        if data.get("status") in ("active", "scheduled"):
+        if data.get("status") != Match.Status.COMPLETED:
             data["winner"] = None
-        elif data.get("status") == "completed":
+        elif data.get("status") == Match.Status.COMPLETED:
             winner = data.get("winner")
             if not winner:
                 self.add_error("winner", "Выберите победителя.")

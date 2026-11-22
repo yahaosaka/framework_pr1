@@ -1,3 +1,5 @@
+import os
+import sys
 """
 Django settings for boardgames project.
 
@@ -66,6 +68,7 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "homepage.context_processors.project_info",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
@@ -131,3 +134,10 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Toolbar включается только в локальной разработке, не в тестах.
+TESTING = "test" in sys.argv or "PYTEST_VERSION" in os.environ
+INTERNAL_IPS = ["127.0.0.1"]
+if DEBUG and not TESTING:
+    INSTALLED_APPS += ["debug_toolbar"]
+    MIDDLEWARE.insert(1, "debug_toolbar.middleware.DebugToolbarMiddleware")

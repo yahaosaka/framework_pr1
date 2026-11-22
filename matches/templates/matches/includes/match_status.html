@@ -1,4 +1,6 @@
-{% if match.is_completed %}
+{% if match.status == "cancelled" %}
+    <span class="badge bg-secondary match-status">Отменена</span>
+{% elif match.is_completed %}
     <span class="badge bg-success match-status match-status-done">
         Завершена
     </span>

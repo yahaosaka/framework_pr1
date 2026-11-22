@@ -4,6 +4,8 @@
 
 {% block content %}
     <h1>Статистика</h1>
+    <p>Идет: {{ totals.active_count }} · Будет идти: {{ totals.scheduled_count }}
+       · Завершена: {{ totals.completed_count }} · Отменена: {{ totals.cancelled_count }}</p>
 
     <div class="stats-grid mb-4">
         <div class="stat-tile">
@@ -15,7 +17,7 @@
             <span class="stat-label">завершено</span>
         </div>
         <div class="stat-tile">
-            <span class="stat-value">{{ totals.avg_minutes|default:"—" }}</span>
+            <span class="stat-value">{{ totals.avg_minutes|floatformat:1|default:"—" }}</span>
             <span class="stat-label">мин. в среднем</span>
         </div>
         <div class="stat-tile">
@@ -40,7 +42,7 @@
                         </a>
                     </td>
                     <td>{{ item.matches_count }}</td>
-                    <td>{{ item.avg_minutes|default:"—" }}</td>
+                    <td>{{ item.avg_minutes|floatformat:1|default:"—" }}</td>
                 </tr>
             {% empty %}
                 <tr><td colspan="3">Данные отсутствуют.</td></tr>

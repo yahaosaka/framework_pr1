@@ -23,8 +23,12 @@ SORTS = {
 
 
 def matches(request):
-    rows = Match.objects.select_related("game", "winner").annotate(
-        player_count=Count("players"))
+    rows = Match.objects.values(
+        "id", "game_id", "match_date", "duration_minutes", "winner_id",
+        "status", "is_completed", "is_scheduled").annotate(
+        game_title=F("game__title"), winner_name=F("winner__name"),
+        played_on=F("match_date"),
+        player_count=Count("players", distinct=True))
     errors = []
     q = request.GET.get("q", "").strip()[:200]
     if q:
@@ -39,14 +43,31 @@ def matches(request):
         else:
             rows = rows.filter(game_id=game_id)
     status = request.GET.get("status", "")
-    if status == "completed":
-        rows = rows.filter(is_completed=True)
-    elif status == "scheduled":
-        rows = rows.filter(is_scheduled=True)
-    elif status == "active":
-        rows = rows.exclude(is_completed=True).filter(is_scheduled=False)
+    if status == Match.Status.COMPLETED:
+        rows = rows.completed()
+    elif status == Match.Status.SCHEDULED:
+        rows = rows.scheduled()
+    elif status == Match.Status.ACTIVE:
+        rows = rows.active()
+    elif status == Match.Status.CANCELLED:
+        rows = rows.cancelled()
     elif status:
         errors.append("Неизвестный статус.")
+    player_value = request.GET.get("player", "")
+    if player_value:
+        player_id = bounded_int(player_value, 1, 2147483647)
+        if player_id is None:
+            errors.append("Некорректный идентификатор игрока.")
+            rows = rows.none()
+        else:
+            rows = rows.filter(players__pk=player_id)
+    exact_date = request.GET.get("date", "")
+    if exact_date:
+        try:
+            rows = rows.for_date(date.fromisoformat(exact_date))
+        except ValueError:
+            errors.append("Некорректная дата.")
+            rows = rows.none()
     dates = {}
     for key, lookup in (
             ("from", "match_date__gte"), ("to", "match_date__lte")):
@@ -70,6 +91,7 @@ def matches(request):
     return render(request, "matches/match_list.html", {
         "matches": page.object_list, "page_obj": page,
         "games": Game.objects.all(), "errors": errors, "sort": sort,
+        "players_filter": Player.objects.all(),
     })
 
 
@@ -124,7 +146,11 @@ def match_edit(request, match_id=None):
 def statistics(request):
     totals = Match.objects.aggregate(
         matches_count=Count("pk"),
-        completed_count=Count("pk", filter=Q(is_completed=True)),
+        completed_count=Count(
+            "pk", filter=Q(status=Match.Status.COMPLETED)),
+        active_count=Count("pk", filter=Q(status=Match.Status.ACTIVE)),
+        scheduled_count=Count("pk", filter=Q(status=Match.Status.SCHEDULED)),
+        cancelled_count=Count("pk", filter=Q(status=Match.Status.CANCELLED)),
         avg_minutes=Avg("duration_minutes"),
         min_minutes=Min("duration_minutes"),
         max_minutes=Max("duration_minutes"),
@@ -136,8 +162,10 @@ def statistics(request):
         "-matches_count", "game_title")
     rating = Player.objects.annotate(
         played=Count("matches", distinct=True,
-                     filter=Q(matches__is_scheduled=False)),
-        wins=Count("won_matches", distinct=True)).order_by(
+                     filter=Q(matches__status__in=[
+                         Match.Status.ACTIVE, Match.Status.COMPLETED])),
+        wins=Count("won_matches", distinct=True, filter=Q(
+            won_matches__status=Match.Status.COMPLETED))).order_by(
         "-wins", "-played", "name", "pk")
     minimum = bounded_int(request.GET.get("min", "1"), 0, 2147483647)
     minimum = 1 if minimum is None else minimum

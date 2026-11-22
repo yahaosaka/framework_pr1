@@ -35,7 +35,7 @@ def test_three_statuses_preserve_match_data(client):
         assert label in client.get(url).content.decode()
         assert label in client.get(f"/games/{game.pk}/").content.decode()
         page = client.get("/matches/", {"status": status})
-        assert [obj.pk for obj in page.context["matches"]] == [match.pk]
+        assert [obj["id"] for obj in page.context["matches"]] == [match.pk]
         for other in {"active", "scheduled", "completed"} - {status}:
             assert not client.get(
                 "/matches/", {"status": other}).context["matches"]

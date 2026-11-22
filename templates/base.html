@@ -31,6 +31,9 @@
     </main>
 
     <footer class="container site-footer">
+        <p>{{ site_title }} · Игр в каталоге: {{ games_count }}</p>
+        <p><a href="{% url 'games:available' %}">Свободные игры на дату</a> ·
+           <a href="{% url 'admin:index' %}">Администрирование</a></p>
         <p>© <span id="current-year"></span> Учет партий в настольные игры</p>
     </footer>
 
