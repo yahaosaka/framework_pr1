@@ -9,6 +9,7 @@
         <div class="card game-card">
             <div class="card-body">
                 <h1 class="card-title">{{ game.title }}</h1>
+                <a class="btn btn-outline-primary mb-3" href="{% url 'games:edit' game.pk %}">Редактировать игру</a>
                 <p class="card-text"><strong>ID:</strong> {{ game.id }}</p>
                 <p class="card-text">
                     <strong>Жанр:</strong> {{ game.genre|default:"не указан" }}

@@ -44,6 +44,16 @@
                 </p>
             </div>
         </div>
+        <section class="card card-body mt-3">
+            <h2 class="h4">Изменить статус</h2>
+            <form method="post">
+                {% csrf_token %}
+                {{ status_form.as_p }}
+                <p>Для статуса «Завершена» выберите победителя.
+                    В статусах «Будет идти» и «Идет» победитель очищается.</p>
+                <button type="submit" class="btn btn-primary">Сохранить статус</button>
+            </form>
+        </section>
     {% else %}
         <h1 class="text-danger">Партия не найдена</h1>
         <p>Партия с указанным идентификатором отсутствует.</p>

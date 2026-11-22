@@ -1,166 +1,153 @@
 from datetime import date
 
-from django.shortcuts import render
+from django.core.paginator import Paginator
+from django.db.models import Avg, Count, F, Max, Min, Q, Sum
+from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_http_methods
 
-from db.database import fetch_all, fetch_one
+from games.models import Game
+from homepage.parameters import bounded_int
+from matches.models import Match
+from matches.forms import MatchForm, StatusForm
+from matches.services import change_status, save_match
 from models.matches import check_duration
+from players.models import Player
 
-
-def with_dates(rows):
-    """Строки sqlite3.Row → словари с датой played_on для фильтра date."""
-    result = []
-    for row in rows:
-        item = dict(row)
-        item["played_on"] = date.fromisoformat(row["match_date"])
-        result.append(item)
-    return result
+SORTS = {
+    "date": ("match_date", "pk"),
+    "-date": ("-match_date", "-pk"),
+    "game": ("game__title", "match_date", "pk"),
+    "duration": ("duration_minutes", "pk"),
+}
 
 
 def matches(request):
-    matches_list = fetch_all(
-        """
-        SELECT matches.id,
-               matches.match_date,
-               matches.duration_minutes,
-               matches.is_completed,
-               games.id AS game_id,
-               games.title AS game_title,
-               winners.name AS winner_name,
-               (SELECT COUNT(*) FROM match_players
-                WHERE match_players.match_id = matches.id) AS player_count
-        FROM matches
-        JOIN games ON matches.game_id = games.id
-        LEFT JOIN players AS winners ON matches.winner_id = winners.id
-        ORDER BY matches.match_date, matches.id;
-        """
-    )
-    return render(
-        request,
-        "matches/match_list.html",
-        {"matches": with_dates(matches_list)},
-    )
+    rows = Match.objects.select_related("game", "winner").annotate(
+        player_count=Count("players"))
+    errors = []
+    q = request.GET.get("q", "").strip()[:200]
+    if q:
+        rows = rows.filter(
+            Q(game__title__icontains=q) | Q(game__genre__icontains=q))
+    game_value = request.GET.get("game", "")
+    if game_value:
+        game_id = bounded_int(game_value, 1, 2147483647)
+        if game_id is None:
+            errors.append("Некорректный идентификатор игры.")
+            rows = rows.none()
+        else:
+            rows = rows.filter(game_id=game_id)
+    status = request.GET.get("status", "")
+    if status == "completed":
+        rows = rows.filter(is_completed=True)
+    elif status == "scheduled":
+        rows = rows.filter(is_scheduled=True)
+    elif status == "active":
+        rows = rows.exclude(is_completed=True).filter(is_scheduled=False)
+    elif status:
+        errors.append("Неизвестный статус.")
+    dates = {}
+    for key, lookup in (
+            ("from", "match_date__gte"), ("to", "match_date__lte")):
+        value = request.GET.get(key, "")
+        if value:
+            try:
+                dates[key] = date.fromisoformat(value)
+                rows = rows.filter(**{lookup: dates[key]})
+            except ValueError:
+                errors.append("Некорректная дата.")
+                rows = rows.none()
+    if "from" in dates and "to" in dates and dates["from"] > dates["to"]:
+        errors.append("Начало периода позже окончания.")
+        rows = rows.none()
+    sort = request.GET.get("sort", "date")
+    if sort not in SORTS:
+        errors.append("Неизвестная сортировка; используется дата.")
+        sort = "date"
+    rows = rows.order_by(*SORTS[sort])
+    page = Paginator(rows, 5).get_page(request.GET.get("page"))
+    return render(request, "matches/match_list.html", {
+        "matches": page.object_list, "page_obj": page,
+        "games": Game.objects.all(), "errors": errors, "sort": sort,
+    })
 
 
+@require_http_methods(["GET", "POST"])
 def match_detail(request, match_id):
-    row = fetch_one(
-        """
-        SELECT matches.id,
-               matches.match_date,
-               matches.duration_minutes,
-               matches.is_completed,
-               games.id AS game_id,
-               games.title AS game_title,
-               winners.name AS winner_name
-        FROM matches
-        JOIN games ON matches.game_id = games.id
-        LEFT JOIN players AS winners ON matches.winner_id = winners.id
-        WHERE matches.id = ?;
-        """,
-        [match_id],
-    )
-    match = None
-    players = []
-    duration_check = ""
-    if row is not None:
-        match = with_dates([row])[0]
-        match["duration_hours"] = round(row["duration_minutes"] / 60, 1)
-        duration_check = check_duration(row["duration_minutes"])
-        players = fetch_all(
-            """
-            SELECT players.id, players.name
-            FROM match_players
-            JOIN players ON match_players.player_id = players.id
-            WHERE match_players.match_id = ?
-            ORDER BY players.name;
-            """,
-            [match_id],
-        )
-    context = {
-        "match": match,
-        "players": players,
-        "duration_check": duration_check,
-    }
-    return render(
-        request,
-        "matches/match_detail.html",
-        context,
-        status=404 if match is None else 200,
-    )
+    match = get_object_or_404(
+        Match.objects.select_related("game", "winner").prefetch_related(
+            "players"), pk=match_id)
+    form = StatusForm(
+        request.POST if request.method == "POST" else None, match=match)
+    if request.method == "POST" and form.is_valid():
+        try:
+            change_status(
+                match.pk, form.cleaned_data["status"],
+                form.cleaned_data["winner"])
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            return redirect("matches:detail", match_id=match.pk)
+    return render(request, "matches/match_detail.html", {
+        "match": match, "players": match.players.all(),
+        "status_form": form,
+        "duration_check": check_duration(match.duration_minutes)})
+
+
+@require_http_methods(["GET", "POST"])
+def match_edit(request, match_id=None):
+    match = get_object_or_404(Match, pk=match_id) if match_id else None
+    initial = {}
+    if match:
+        initial = {
+            "game": match.game_id, "players": match.players.all(),
+            "match_date": match.match_date.isoformat(),
+            "duration_minutes": match.duration_minutes,
+            "status": match.status,
+            "winner": match.winner_id}
+    form = MatchForm(
+        request.POST if request.method == "POST" else None, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data.copy()
+        try:
+            saved = save_match(match_id=match_id, **data)
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            return redirect("matches:detail", match_id=saved.pk)
+    return render(request, "matches/match_form.html", {
+        "form": form,
+        "heading": "Редактировать партию" if match else "Новая партия"})
 
 
 def statistics(request):
-    totals = fetch_one(
-        """
-        SELECT COUNT(*) AS matches_count,
-               SUM(is_completed) AS completed_count,
-               ROUND(AVG(duration_minutes), 1) AS avg_minutes,
-               MIN(duration_minutes) AS min_minutes,
-               MAX(duration_minutes) AS max_minutes,
-               SUM(duration_minutes) AS total_minutes
-        FROM matches;
-        """
-    )
-    by_game = fetch_all(
-        """
-        SELECT games.id AS game_id,
-               games.title AS game_title,
-               COUNT(matches.id) AS matches_count,
-               ROUND(AVG(matches.duration_minutes), 1) AS avg_minutes
-        FROM games
-        LEFT JOIN matches ON matches.game_id = games.id
-        GROUP BY games.id, games.title
-        ORDER BY matches_count DESC, games.title;
-        """
-    )
-    rating = fetch_all(
-        """
-        SELECT players.name,
-               COUNT(match_players.match_id) AS played,
-               (SELECT COUNT(*) FROM matches
-                WHERE matches.winner_id = players.id) AS wins
-        FROM players
-        LEFT JOIN match_players ON match_players.player_id = players.id
-        GROUP BY players.id, players.name
-        ORDER BY wins DESC, played DESC, players.name;
-        """
-    )
-    min_matches = request.GET.get("min", "1")
-    min_matches = int(min_matches) if min_matches.isdigit() else 1
-    popular = fetch_all(
-        """
-        SELECT games.title AS game_title,
-               COUNT(matches.id) AS matches_count
-        FROM games
-        JOIN matches ON matches.game_id = games.id
-        GROUP BY games.id, games.title
-        HAVING COUNT(matches.id) > ?
-        ORDER BY matches_count DESC;
-        """,
-        [min_matches],
-    )
-    by_genre = fetch_all(
-        """
-        SELECT genre, COUNT(*) AS games_count
-        FROM games
-        GROUP BY genre
-        ORDER BY games_count DESC, genre;
-        """
-    )
-    unplayed = fetch_all(
-        """
-        SELECT id, title
-        FROM games
-        WHERE id NOT IN (SELECT game_id FROM matches)
-        ORDER BY title;
-        """
-    )
-    context = {
-        "totals": totals,
-        "by_game": by_game,
-        "rating": rating,
-        "popular": popular,
-        "min_matches": min_matches,
-        "by_genre": by_genre,
-        "unplayed": unplayed,
-    }
-    return render(request, "matches/statistics.html", context)
+    totals = Match.objects.aggregate(
+        matches_count=Count("pk"),
+        completed_count=Count("pk", filter=Q(is_completed=True)),
+        avg_minutes=Avg("duration_minutes"),
+        min_minutes=Min("duration_minutes"),
+        max_minutes=Max("duration_minutes"),
+        total_minutes=Sum("duration_minutes"))
+    by_game = Game.objects.values(
+        game_id=F("pk"), game_title=F("title")).annotate(
+        matches_count=Count("matches"),
+        avg_minutes=Avg("matches__duration_minutes")).order_by(
+        "-matches_count", "game_title")
+    rating = Player.objects.annotate(
+        played=Count("matches", distinct=True,
+                     filter=Q(matches__is_scheduled=False)),
+        wins=Count("won_matches", distinct=True)).order_by(
+        "-wins", "-played", "name", "pk")
+    minimum = bounded_int(request.GET.get("min", "1"), 0, 2147483647)
+    minimum = 1 if minimum is None else minimum
+    popular = Game.objects.values(game_title=F("title")).annotate(
+        matches_count=Count("matches")).filter(
+        matches_count__gt=minimum).order_by("-matches_count", "game_title")
+    genres = Game.objects.values("genre").annotate(
+        games_count=Count("pk")).order_by("-games_count", "genre")
+    unplayed = Game.objects.exclude(matches__isnull=False)
+    return render(request, "matches/statistics.html", {
+        "totals": totals, "by_game": by_game, "rating": rating,
+        "popular": popular, "min_matches": minimum,
+        "by_genre": genres, "unplayed": unplayed})

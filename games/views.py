@@ -1,80 +1,55 @@
-from django.shortcuts import render
+from django.db.models import Q
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_http_methods
 
-from db.database import fetch_all, fetch_one
-from matches.views import with_dates
+from games.models import Game
+from games.forms import GameForm
+from homepage.parameters import bounded_int
+
+
+@require_http_methods(["GET", "POST"])
+def game_edit(request, game_id):
+    game = get_object_or_404(Game, pk=game_id)
+    form = GameForm(
+        request.POST if request.method == "POST" else None, instance=game)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        return redirect("games:detail", game_id=game.pk)
+    return render(request, "games/game_form.html",
+                  {"form": form, "game": game})
 
 
 def games(request):
-    games_list = fetch_all(
-        """
-        SELECT id, title, min_players, max_players, genre
-        FROM games
-        ORDER BY title;
-        """
-    )
-    return render(request, "games/game_list.html", {"games": games_list})
+    query = request.GET.get("q", "").strip()[:200]
+    games_list = Game.objects.all()
+    if query:
+        games_list = games_list.filter(title__icontains=query)
+    return render(request, "games/game_list.html",
+                  {"games": games_list, "q": query})
 
 
 def game_detail(request, game_id):
-    game = fetch_one(
-        """
-        SELECT id, title, min_players, max_players, genre
-        FROM games
-        WHERE id = ?;
-        """,
-        [game_id],
-    )
-    game_matches = []
-    if game is not None:
-        game_matches = with_dates(
-            fetch_all(
-                """
-                SELECT matches.id,
-                       matches.match_date,
-                       matches.is_completed,
-                       winners.name AS winner_name
-                FROM matches
-                LEFT JOIN players AS winners
-                    ON matches.winner_id = winners.id
-                WHERE matches.game_id = ?
-                ORDER BY matches.match_date;
-                """,
-                [game_id],
-            )
-        )
-    return render(
-        request,
-        "games/game_detail.html",
-        {"game": game, "matches": game_matches},
-        status=404 if game is None else 200,
-    )
+    game = get_object_or_404(Game, pk=game_id)
+    game_matches = game.matches.select_related("winner").order_by(
+        "match_date", "pk")
+    return render(request, "games/game_detail.html",
+                  {"game": game, "matches": game_matches})
 
 
 def game_search(request):
-    """Подбор игр для заданного количества игроков."""
-    players_value = request.GET.get("players", "").strip()
-    player_count = None
+    value = request.GET.get("players", "").strip()
+    query = request.GET.get("q", "").strip()[:200]
+    count = bounded_int(value, 2, 6)
     error = ""
-    games_list = []
-    if players_value:
-        if players_value.isdigit():
-            player_count = int(players_value)
-            games_list = fetch_all(
-                """
-                SELECT id, title, min_players, max_players, genre
-                FROM games
-                WHERE min_players <= ?
-                  AND max_players >= ?
-                ORDER BY title;
-                """,
-                [player_count, player_count],
-            )
-        else:
-            error = "Введите целое число игроков."
-    context = {
-        "games": games_list,
-        "player_count": player_count,
-        "players_value": players_value,
-        "error": error,
-    }
-    return render(request, "games/game_search.html", context)
+    results = Game.objects.none()
+    if value and count is None:
+        error = "Введите целое число игроков от 2 до 6."
+    elif count is not None:
+        results = Game.objects.filter(
+            min_players__lte=count, max_players__gte=count)
+        if query:
+            results = results.filter(
+                Q(title__icontains=query) | Q(genre__icontains=query))
+    return render(request, "games/game_search.html", {
+        "games": results, "player_count": count, "players_value": value,
+        "q": query, "error": error})

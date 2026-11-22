@@ -3,7 +3,7 @@
 {% block title %}Игры – Учет партий{% endblock %}
 
 {% block content %}
-    <h1>Настольные игры</h1>
+    <h1>Настольные игры</h1><form method="get"><label for="q">Название:</label><input id="q" name="q" value="{{ q }}"><button>Найти</button></form>
     <p>
         Всего игр: {{ games|length }} ·
         <a href="{% url 'games:search' %}">Подобрать игру по числу игроков</a>
@@ -15,3 +15,4 @@
         <p>Игры не найдены.</p>
     {% endfor %}
 {% endblock %}
+

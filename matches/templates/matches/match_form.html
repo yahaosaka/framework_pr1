@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} – Учет партий{% endblock %}
+{% block content %}
+<h1>{{ heading }}</h1>
+<form method="post" class="card card-body">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p>Если статус «Будет идти» или «Идет», победитель не сохраняется.
+       Длительность более 240 минут допускается.</p>
+    <button class="btn btn-primary" type="submit">Сохранить партию</button>
+</form>
+<a class="btn btn-outline-secondary mt-3" href="{% url 'matches:list' %}">К списку партий</a>
+{% endblock %}

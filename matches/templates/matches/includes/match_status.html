@@ -2,6 +2,10 @@
     <span class="badge bg-success match-status match-status-done">
         Завершена
     </span>
+{% elif match.is_scheduled %}
+    <span class="badge bg-info text-dark match-status">
+        Будет идти
+    </span>
 {% else %}
     <span class="badge bg-warning text-dark match-status match-status-active">
         Идет

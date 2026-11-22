@@ -4,7 +4,42 @@
 
 {% block content %}
     <h1>Партии</h1>
-    <p>Всего партий: {{ matches|length }}</p>
+    <a class="btn btn-primary mb-3" href="{% url 'matches:create' %}">Добавить партию</a>
+    <p>Найдено партий: {{ page_obj.paginator.count }}</p>
+    {% for error in errors %}<p class="text-danger">{{ error }}</p>{% endfor %}
+    <form method="get" class="mb-4">
+        <label>Название игры или жанр
+            <input name="q" value="{{ request.GET.q }}" maxlength="200">
+        </label>
+        <label>Игра
+            <select name="game">
+                <option value="">Все игры</option>
+                {% for game in games %}
+                    <option value="{{ game.pk }}" {% if request.GET.game == game.pk|stringformat:"s" %}selected{% endif %}>{{ game.title }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Статус
+            <select name="status">
+                <option value="">Все</option>
+                <option value="completed" {% if request.GET.status == "completed" %}selected{% endif %}>Завершена</option>
+                <option value="scheduled" {% if request.GET.status == "scheduled" %}selected{% endif %}>Будет идти</option>
+                <option value="active" {% if request.GET.status == "active" %}selected{% endif %}>Идет</option>
+            </select>
+        </label>
+        <label>С <input type="date" name="from" value="{{ request.GET.from }}"></label>
+        <label>По <input type="date" name="to" value="{{ request.GET.to }}"></label>
+        <label>Порядок
+            <select name="sort">
+                <option value="date" {% if sort == "date" %}selected{% endif %}>По дате</option>
+                <option value="-date" {% if sort == "-date" %}selected{% endif %}>Новые первыми</option>
+                <option value="game" {% if sort == "game" %}selected{% endif %}>По игре и дате</option>
+                <option value="duration" {% if sort == "duration" %}selected{% endif %}>По длительности</option>
+            </select>
+        </label>
+        <button type="submit" class="btn btn-primary">Применить</button>
+        <a href="{% url 'matches:list' %}">Сбросить</a>
+    </form>
 
     <ul class="list-group">
         {% for match in matches %}
@@ -26,4 +61,13 @@
             <li class="list-group-item">Партии не найдены.</li>
         {% endfor %}
     </ul>
+    <nav aria-label="Страницы партий" class="mt-3">
+        {% if page_obj.has_previous %}
+            <a href="{% querystring page=page_obj.previous_page_number %}">Назад</a>
+        {% endif %}
+        <span>Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="{% querystring page=page_obj.next_page_number %}">Вперед</a>
+        {% endif %}
+    </nav>
 {% endblock %}

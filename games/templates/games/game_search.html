@@ -12,10 +12,11 @@
             type="number"
             id="players"
             name="players"
-            min="1"
+            min="2" max="6"
             value="{{ players_value }}"
             class="form-control"
         >
+        <label for="q">Название или жанр:</label><input id="q" name="q" value="{{ q }}" class="form-control">
         <button type="submit" class="btn btn-primary">Найти</button>
     </form>
 
@@ -34,3 +35,4 @@
         ← ко всем играм
     </a>
 {% endblock %}
+
