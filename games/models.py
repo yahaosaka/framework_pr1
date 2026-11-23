@@ -3,9 +3,13 @@ from django.db import models
 from django.urls import reverse
 
 from games.slugs import title_slug
+from games.validators import validate_game_image
 
 
 class Game(models.Model):
+    image = models.ImageField(
+        "Изображение", upload_to="games/%Y/%m/", blank=True,
+        validators=[validate_game_image])
     slug = models.SlugField(
         "Слаг", max_length=220, unique=True, blank=True)
     title = models.CharField("Название", max_length=200, unique=True)

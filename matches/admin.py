@@ -1,5 +1,6 @@
 from django.contrib import admin, messages
-from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Count
 
 from matches.admin_forms import MatchAdminForm, ParticipationFormSet
@@ -43,7 +44,8 @@ class MatchAdmin(admin.ModelAdmin):
     date_hierarchy = "match_date"
     autocomplete_fields = ["game", "winner"]
     inlines = [MatchPlayerInline]
-    fields = ["game", "match_date", "duration_minutes", "status", "winner"]
+    fields = [
+        "game", "match_date", "duration_minutes", "status", "winner", "notes"]
     actions = ["mark_active", "mark_scheduled", "mark_cancelled"]
 
     def get_queryset(self, request):
@@ -55,12 +57,22 @@ class MatchAdmin(admin.ModelAdmin):
         return obj.roster_count
 
     def _change_status(self, request, queryset, status):
-        with transaction.atomic():
-            for item in queryset:
-                change_status(item.pk, status, None)
+        updated, rejected = 0, 0
+        for item in queryset:
+            try:
+                with transaction.atomic():
+                    change_status(item.pk, status, None)
+            except (ValidationError, IntegrityError):
+                rejected += 1
+            else:
+                updated += 1
         self.message_user(
-            request, f"Обновлено партий: {queryset.count()}",
+            request, f"Обновлено партий: {updated}",
             level=messages.SUCCESS)
+        if rejected:
+            self.message_user(
+                request, f"Не изменено из-за занятости игры: {rejected}",
+                level=messages.ERROR)
 
     @admin.action(description="Отметить: идет")
     def mark_active(self, request, queryset):

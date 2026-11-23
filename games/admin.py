@@ -17,7 +17,7 @@ class GameAdmin(admin.ModelAdmin):
     readonly_fields = ["large_company"]
     fields = [
         "title", "slug", "genre", "min_players", "max_players",
-        "large_company"]
+        "large_company", "image"]
     prepopulated_fields = {"slug": ["title"]}
     inlines = [MatchInline]
 

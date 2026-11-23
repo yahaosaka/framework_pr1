@@ -68,8 +68,14 @@ def import_source(source):
                            else Match.Status.ACTIVE),
                 "is_scheduled": False}
             # Проверяем поля до записи, состав проверен по источнику.
-            candidate = Match(**defaults)
-            candidate.full_clean()
+            candidate = Match.objects.filter(pk=row["id"]).first()
+            if candidate is None:
+                candidate = Match(pk=row["id"], **defaults)
+            else:
+                for field, value in defaults.items():
+                    setattr(candidate, field, value)
+            candidate._defer_roster_validation = True
+            candidate.full_clean(validate_unique=False)
             obj, _ = Match.objects.update_or_create(
                 pk=row["id"], defaults=defaults)
             obj.players.set(ids)

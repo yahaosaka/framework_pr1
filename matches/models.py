@@ -16,6 +16,7 @@ class Match(models.Model):
     status = models.CharField(
         "Статус", max_length=12, choices=Status.choices,
         default=Status.ACTIVE)
+    notes = models.TextField("Примечание", blank=True, max_length=1000)
     objects = MatchQuerySet.as_manager()
 
     game = models.ForeignKey(
@@ -39,6 +40,13 @@ class Match(models.Model):
         verbose_name_plural = "Партии"
         ordering = ["match_date", "pk"]
         constraints = [
+            models.UniqueConstraint(
+                fields=["game", "match_date"],
+                condition=models.Q(status__in=["active", "scheduled"]),
+                name="unique_blocking_game_day",
+                violation_error_message=(
+                    "Игра уже занята на эту дату. "
+                    "Выберите другую игру или дату.")),
             models.CheckConstraint(
                 condition=(
                     models.Q(status="completed", is_completed=True,
@@ -84,6 +92,17 @@ class Match(models.Model):
 
     def get_absolute_url(self):
         return reverse("matches:detail", kwargs={"match_id": self.pk})
+
+    def cancel(self):
+        from matches.services import change_status
+        if self.status not in (self.Status.ACTIVE, self.Status.SCHEDULED):
+            raise ValidationError(
+                "Отменить можно только текущую или будущую партию.")
+        saved = change_status(self.pk, self.Status.CANCELLED, None)
+        self.status = saved.status
+        self.winner = None
+        self.sync_status_flags()
+        return self
 
     @property
     def played_on(self):

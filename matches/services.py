@@ -5,6 +5,18 @@ from django.db import transaction
 from matches.models import Match
 
 
+def validate_availability(game_id, match_date, status, exclude_pk=None):
+    if status not in (Match.Status.ACTIVE, Match.Status.SCHEDULED):
+        return
+    occupied = Match.objects.blocking().filter(
+        game_id=game_id, match_date=match_date)
+    if exclude_pk is not None:
+        occupied = occupied.exclude(pk=exclude_pk)
+    if occupied.exists():
+        raise ValidationError(
+            "Игра уже занята на эту дату. Выберите другую игру или дату.")
+
+
 @transaction.atomic
 def save_match(*, game, players, match_date, duration_minutes,
                is_completed=False, winner=None, match_id=None, status=None):

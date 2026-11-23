@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Редактировать игру{% endblock %}
+{% block title %}{{ heading }}{% endblock %}
 {% block content %}
-<h1>Редактировать игру</h1>
-<form method="post" class="card card-body">
+<h1>{{ heading }}</h1>
+<form method="post" enctype="multipart/form-data" class="card card-body">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% include "includes/form_fields.html" %}
     <button class="btn btn-primary" type="submit">Сохранить</button>
 </form>
-<a class="btn btn-outline-secondary mt-3" href="{% url 'games:detail' game.pk %}">К игре</a>
+<a class="btn btn-outline-secondary mt-3" href="{% url 'games:list' %}">К списку игр</a>
 {% endblock %}

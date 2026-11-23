@@ -175,3 +175,27 @@ python manage.py createsuperuser
 Не запускайте import_pr7 поверх измененных данных: это восстановит
 значения совпадающих записей из источника ПР7. Для обновления достаточно
 установить requirements.txt и применить migrate.
+## Практическая работа №11 Формы
+
+- matches/forms.py: MatchFilterForm(Form), MatchForm(ModelForm), StatusForm.
+- Фильтры проверяются is_valid(), используются только cleaned_data.
+- /matches/new/ — создание; /matches/ID/edit/ — редактирование через instance.
+- /matches/ID/cancel/ — только POST, повтор отмененной записи дает 404,
+  GET дает 405. /matches/ID/delete/ — подтверждение GET и удаление POST.
+- Новая дата не может быть прошедшей; исходную историческую дату можно
+  сохранить без изменения. Длительность — 1–1440 минут.
+- Идущая/запланированная партия занимает один экземпляр игры на день;
+  отмененная/завершенная не блокирует. При редактировании исключается свой ID.
+- unique_blocking_game_day защищает от двух конкурирующих записей.
+- /games/new/ и редактирование игры поддерживают изображения через
+  request.FILES и multipart/form-data. PNG/JPEG/WEBP, до 5 МБ и 20 Мп.
+- MEDIA_ROOT=media, MEDIA_URL=/media/; файлы не входят в Git.
+- Bootstrap-виджеты, Textarea примечания, ошибки полей и формы, сообщения
+  после сохранения. Новые страницы наследуют base.html.
+- Миграции: games/0004_game_image и
+  matches/0005_match_notes_match_unique_blocking_game_day.
+- 110 тестов пройдены. check, flake8 и проверка миграций проходят.
+
+[Отчет ПР11](docs/practical_11.md) · [Все 20 пунктов защиты](docs/defense_pr11.md).
+Запуск прежний; для обновления установить requirements.txt и применить migrate.
+Импорт ПР7 повторять не нужно. Админка и аккаунт ПР10 сохраняются.

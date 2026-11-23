@@ -3,6 +3,7 @@
 {% block title %}Игры – Учет партий{% endblock %}
 
 {% block content %}
+    <a class="btn btn-primary mb-3" href="{% url 'games:create' %}">Добавить игру</a>
     <h1>Настольные игры</h1><form method="get"><label for="q">Название:</label><input id="q" name="q" value="{{ q }}"><button>Найти</button></form>
     <p>
         Всего игр: {{ games|length }} ·

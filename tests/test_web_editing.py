@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, timedelta
+from django.utils import timezone
 
 import pytest
 from django.test import Client
@@ -53,17 +54,18 @@ def test_status_rejects_missing_or_foreign_winner(client, party):
 
 
 def test_edit_completed_party_and_roster_atomically(client, party):
+    edited_date = timezone.localdate() + timedelta(days=1)
     third = Player.objects.create(name="Новый участник")
     first = party.players.first()
     response = client.post(f"/matches/{party.pk}/edit/", {
         "game": party.game_id, "players": [first.pk, third.pk],
-        "match_date": "2026-11-18", "duration_minutes": 80,
+        "match_date": edited_date.isoformat(), "duration_minutes": 80,
         "status": "completed", "winner": third.pk})
     assert response.status_code == 302
     party.refresh_from_db()
     assert party.winner_id == third.pk
     assert party.duration_minutes == 80
-    assert party.match_date == date(2026, 11, 18)
+    assert party.match_date == edited_date
     assert set(party.players.values_list(
         "pk", flat=True)) == {first.pk, third.pk}
     # Удалить победителя из состава без смены результата нельзя.
@@ -83,7 +85,8 @@ def test_create_on_site(client, party):
     data = {
         "game": party.game_id,
         "players": list(party.players.values_list("pk", flat=True)),
-        "match_date": "2026-11-20", "duration_minutes": 50,
+        "match_date": (timezone.localdate() + timedelta(days=2)).isoformat(),
+        "duration_minutes": 50,
         "status": "active"}
     response = client.post("/matches/new/", data)
     assert response.status_code == 302

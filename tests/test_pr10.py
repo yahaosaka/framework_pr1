@@ -194,8 +194,8 @@ def test_status_data_migration_preserves_completed_and_scheduled():
         ("games", "0002_pr10_games"),
         ("players", "0002_alter_player_options"),
         ("matches", "0002_match_is_scheduled_and_more")]
-    after = [("matches", "0003_pr10_status")]
     executor = MigrationExecutor(connection)
+    after = executor.loader.graph.leaf_nodes()
     executor.migrate(before)
     old = executor.loader.project_state(before).apps
     GameOld = old.get_model("games", "Game")
@@ -210,7 +210,8 @@ def test_status_data_migration_preserves_completed_and_scheduled():
     completed = MatchOld.objects.create(
         **common, is_completed=True, winner_id=player.pk)
     scheduled = MatchOld.objects.create(**common, is_scheduled=True)
-    active = MatchOld.objects.create(**common)
+    active = MatchOld.objects.create(
+        game_id=game.pk, match_date="2026-11-23", duration_minutes=40)
     try:
         executor = MigrationExecutor(connection)
         executor.migrate(after)

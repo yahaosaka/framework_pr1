@@ -6,44 +6,8 @@
     <h1>Партии</h1>
     <a class="btn btn-primary mb-3" href="{% url 'matches:create' %}">Добавить партию</a>
     <p>Найдено партий: {{ page_obj.paginator.count }}</p>
-    {% for error in errors %}<p class="text-danger">{{ error }}</p>{% endfor %}
-    <form method="get" class="mb-4">
-        <label>Название игры или жанр
-            <input name="q" value="{{ request.GET.q }}" maxlength="200">
-        </label>
-        <label>Игра
-            <select name="game">
-                <option value="">Все игры</option>
-                {% for game in games %}
-                    <option value="{{ game.pk }}" {% if request.GET.game == game.pk|stringformat:"s" %}selected{% endif %}>{{ game.title }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>Статус
-            <select name="status">
-                <option value="">Все</option>
-                <option value="completed" {% if request.GET.status == "completed" %}selected{% endif %}>Завершена</option>
-                <option value="scheduled" {% if request.GET.status == "scheduled" %}selected{% endif %}>Будет идти</option>
-                <option value="active" {% if request.GET.status == "active" %}selected{% endif %}>Идет</option>
-                <option value="cancelled" {% if request.GET.status == "cancelled" %}selected{% endif %}>Отменена</option>
-            </select>
-        </label>
-        <label>Игрок <select name="player"><option value="">Все</option>
-            {% for player in players_filter %}
-                <option value="{{ player.pk }}" {% if request.GET.player == player.pk|stringformat:"s" %}selected{% endif %}>{{ player.name }}</option>
-            {% endfor %}
-        </select></label>
-        <label>Точная дата <input type="date" name="date" value="{{ request.GET.date }}"></label>
-        <label>С <input type="date" name="from" value="{{ request.GET.from }}"></label>
-        <label>По <input type="date" name="to" value="{{ request.GET.to }}"></label>
-        <label>Порядок
-            <select name="sort">
-                <option value="date" {% if sort == "date" %}selected{% endif %}>По дате</option>
-                <option value="-date" {% if sort == "-date" %}selected{% endif %}>Новые первыми</option>
-                <option value="game" {% if sort == "game" %}selected{% endif %}>По игре и дате</option>
-                <option value="duration" {% if sort == "duration" %}selected{% endif %}>По длительности</option>
-            </select>
-        </label>
+    <form method="get" class="card card-body mb-4">
+        {% include "includes/form_fields.html" with form=filter_form %}
         <button type="submit" class="btn btn-primary">Применить</button>
         <a href="{% url 'matches:list' %}">Сбросить</a>
     </form>

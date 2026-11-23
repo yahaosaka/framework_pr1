@@ -48,12 +48,23 @@
             <h2 class="h4">Изменить статус</h2>
             <form method="post">
                 {% csrf_token %}
-                {{ status_form.as_p }}
+                {% include "includes/form_fields.html" with form=status_form %}
                 <p>Для статуса «Завершена» выберите победителя.
                     В статусах «Будет идти» и «Идет» победитель очищается.</p>
                 <button type="submit" class="btn btn-primary">Сохранить статус</button>
             </form>
         </section>
+        <div class="my-3 d-flex gap-3 align-items-center">
+            <a class="btn btn-outline-primary" href="{% url 'matches:edit' match.pk %}">Редактировать партию</a>
+            {% if match.status == "active" or match.status == "scheduled" %}
+                <form method="post" action="{% url 'matches:cancel' match.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-warning" type="submit">Отменить партию</button>
+                </form>
+            {% endif %}
+            <a class="text-danger" href="{% url 'matches:delete' match.pk %}">Удалить с подтверждением</a>
+        </div>
+        {% if match.notes %}<h2 class="h4">Примечание</h2><p>{{ match.notes|linebreaksbr }}</p>{% endif %}
     {% else %}
         <h1 class="text-danger">Партия не найдена</h1>
         <p>Партия с указанным идентификатором отсутствует.</p>

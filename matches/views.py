@@ -1,16 +1,19 @@
-from datetime import date
+from django.contrib import messages
+from django.db import IntegrityError, transaction
+from django.urls import reverse
+from django.utils import timezone
 
 from django.core.paginator import Paginator
 from django.db.models import Avg, Count, F, Max, Min, Q, Sum
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
 from games.models import Game
 from homepage.parameters import bounded_int
 from matches.models import Match
-from matches.forms import MatchForm, StatusForm
-from matches.services import change_status, save_match
+from matches.forms import MatchFilterForm, MatchForm, StatusForm
+from matches.services import change_status, validate_availability
 from models.matches import check_duration
 from players.models import Player
 
@@ -29,69 +32,39 @@ def matches(request):
         game_title=F("game__title"), winner_name=F("winner__name"),
         played_on=F("match_date"),
         player_count=Count("players", distinct=True))
+    filter_form = MatchFilterForm(request.GET or None)
     errors = []
-    q = request.GET.get("q", "").strip()[:200]
-    if q:
-        rows = rows.filter(
-            Q(game__title__icontains=q) | Q(game__genre__icontains=q))
-    game_value = request.GET.get("game", "")
-    if game_value:
-        game_id = bounded_int(game_value, 1, 2147483647)
-        if game_id is None:
-            errors.append("Некорректный идентификатор игры.")
-            rows = rows.none()
+    sort = "date"
+    if filter_form.is_bound:
+        if filter_form.is_valid():
+            data = filter_form.cleaned_data
+            if data["q"]:
+                rows = rows.filter(
+                    Q(game__title__icontains=data["q"])
+                    | Q(game__genre__icontains=data["q"]))
+            if data["game"]:
+                rows = rows.filter(game=data["game"])
+            if data["player"]:
+                rows = rows.filter(players=data["player"])
+            if data["status"]:
+                rows = rows.filter(status=data["status"])
+            if data["date"]:
+                rows = rows.for_date(data["date"])
+            if data["from"]:
+                rows = rows.filter(match_date__gte=data["from"])
+            if data["to"]:
+                rows = rows.filter(match_date__lte=data["to"])
+            sort = data["sort"] or "date"
         else:
-            rows = rows.filter(game_id=game_id)
-    status = request.GET.get("status", "")
-    if status == Match.Status.COMPLETED:
-        rows = rows.completed()
-    elif status == Match.Status.SCHEDULED:
-        rows = rows.scheduled()
-    elif status == Match.Status.ACTIVE:
-        rows = rows.active()
-    elif status == Match.Status.CANCELLED:
-        rows = rows.cancelled()
-    elif status:
-        errors.append("Неизвестный статус.")
-    player_value = request.GET.get("player", "")
-    if player_value:
-        player_id = bounded_int(player_value, 1, 2147483647)
-        if player_id is None:
-            errors.append("Некорректный идентификатор игрока.")
             rows = rows.none()
-        else:
-            rows = rows.filter(players__pk=player_id)
-    exact_date = request.GET.get("date", "")
-    if exact_date:
-        try:
-            rows = rows.for_date(date.fromisoformat(exact_date))
-        except ValueError:
-            errors.append("Некорректная дата.")
-            rows = rows.none()
-    dates = {}
-    for key, lookup in (
-            ("from", "match_date__gte"), ("to", "match_date__lte")):
-        value = request.GET.get(key, "")
-        if value:
-            try:
-                dates[key] = date.fromisoformat(value)
-                rows = rows.filter(**{lookup: dates[key]})
-            except ValueError:
-                errors.append("Некорректная дата.")
-                rows = rows.none()
-    if "from" in dates and "to" in dates and dates["from"] > dates["to"]:
-        errors.append("Начало периода позже окончания.")
-        rows = rows.none()
-    sort = request.GET.get("sort", "date")
-    if sort not in SORTS:
-        errors.append("Неизвестная сортировка; используется дата.")
-        sort = "date"
+            errors = [
+                str(error) for values in filter_form.errors.values()
+                for error in values]
     rows = rows.order_by(*SORTS[sort])
     page = Paginator(rows, 5).get_page(request.GET.get("page"))
     return render(request, "matches/match_list.html", {
         "matches": page.object_list, "page_obj": page,
-        "games": Game.objects.all(), "errors": errors, "sort": sort,
-        "players_filter": Player.objects.all(),
+        "filter_form": filter_form, "errors": errors, "sort": sort,
     })
 
 
@@ -109,6 +82,8 @@ def match_detail(request, match_id):
                 form.cleaned_data["winner"])
         except ValidationError as exc:
             form.add_error(None, exc)
+        except IntegrityError:
+            form.add_error(None, "Игра уже занята на эту дату.")
         else:
             return redirect("matches:detail", match_id=match.pk)
     return render(request, "matches/match_detail.html", {
@@ -120,27 +95,48 @@ def match_detail(request, match_id):
 @require_http_methods(["GET", "POST"])
 def match_edit(request, match_id=None):
     match = get_object_or_404(Match, pk=match_id) if match_id else None
-    initial = {}
-    if match:
-        initial = {
-            "game": match.game_id, "players": match.players.all(),
-            "match_date": match.match_date.isoformat(),
-            "duration_minutes": match.duration_minutes,
-            "status": match.status,
-            "winner": match.winner_id}
     form = MatchForm(
-        request.POST if request.method == "POST" else None, initial=initial)
+        request.POST if request.method == "POST" else None,
+        instance=match,
+        initial=None if match else {"match_date": timezone.localdate()})
     if request.method == "POST" and form.is_valid():
-        data = form.cleaned_data.copy()
         try:
-            saved = save_match(match_id=match_id, **data)
-        except ValidationError as exc:
-            form.add_error(None, exc)
+            with transaction.atomic():
+                saved = form.save(commit=False)
+                validate_availability(
+                    saved.game_id, saved.match_date, saved.status, saved.pk)
+                saved.save()
+                form.save_m2m()
+        except (IntegrityError, ValidationError):
+            form.add_error(
+                None, "Не удалось сохранить партию: игра занята или "
+                "данные изменились. Проверьте форму.")
         else:
+            messages.success(request, "Партия сохранена.")
             return redirect("matches:detail", match_id=saved.pk)
     return render(request, "matches/match_form.html", {
-        "form": form,
+        "form": form, "match": match,
         "heading": "Редактировать партию" if match else "Новая партия"})
+
+
+@require_POST
+def match_cancel(request, match_id):
+    match = get_object_or_404(Match.objects.blocking(), pk=match_id)
+    match.cancel()
+    messages.success(request, "Партия отменена. Запись сохранена в истории.")
+    return redirect(reverse("matches:list") + "?status=active")
+
+
+@require_http_methods(["GET", "POST"])
+def match_delete(request, match_id):
+    match = get_object_or_404(Match, pk=match_id)
+    if request.method == "POST":
+        with transaction.atomic():
+            match.delete()
+        messages.success(request, "Партия удалена.")
+        return redirect("matches:list")
+    return render(request, "matches/match_confirm_delete.html",
+                  {"match": match})
 
 
 def statistics(request):

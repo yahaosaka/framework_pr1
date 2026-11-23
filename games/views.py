@@ -1,6 +1,7 @@
 from datetime import date
 
-from django.db import DatabaseError
+from django.contrib import messages
+from django.db import DatabaseError, IntegrityError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
@@ -12,15 +13,22 @@ from matches.models import Match
 
 
 @require_http_methods(["GET", "POST"])
-def game_edit(request, game_id):
-    game = get_object_or_404(Game, pk=game_id)
+def game_edit(request, game_id=None):
+    game = get_object_or_404(Game, pk=game_id) if game_id else None
     form = GameForm(
-        request.POST if request.method == "POST" else None, instance=game)
+        request.POST if request.method == "POST" else None,
+        request.FILES if request.method == "POST" else None, instance=game)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        return redirect("games:detail", game_id=game.pk)
+        try:
+            saved = form.save()
+        except IntegrityError:
+            form.add_error(None, "Название или слаг уже используются.")
+        else:
+            messages.success(request, "Игра сохранена.")
+            return redirect("games:detail", game_id=saved.pk)
     return render(request, "games/game_form.html",
-                  {"form": form, "game": game})
+                  {"form": form, "game": game,
+                   "heading": "Редактировать игру" if game else "Новая игра"})
 
 
 def games(request):

@@ -3,3 +3,4 @@ pytest>=8.0
 flake8>=7.0
 pytest-django>=4.9
 django-debug-toolbar==6.2.0
+Pillow==13.0.0

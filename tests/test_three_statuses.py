@@ -2,6 +2,7 @@ from datetime import date
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from games.models import Game
 from matches.services import change_status, create_match, finish_match
@@ -68,7 +69,7 @@ def test_create_and_edit_scheduled(client):
     players = [Player.objects.create(name=n) for n in ("А", "Б")]
     data = {
         "game": game.pk, "players": [p.pk for p in players],
-        "match_date": "2026-11-17", "duration_minutes": 40,
+        "match_date": timezone.localdate().isoformat(), "duration_minutes": 40,
         "status": "scheduled"}
     assert client.post("/matches/new/", data).status_code == 302
     match = game.matches.get()

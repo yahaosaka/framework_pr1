@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Удалить партию{% endblock %}
+{% block content %}
+<h1>Удалить партию №{{ match.pk }}?</h1>
+<p>{{ match.game.title }}, {{ match.match_date|date:"d.m.Y" }}.
+Будут удалены запись партии и ее состав участников. Игры и игроки сохранятся.</p>
+<form method="post">{% csrf_token %}
+    <button type="submit" class="btn btn-danger">Подтвердить удаление</button>
+    <a class="btn btn-outline-secondary" href="{% url 'matches:detail' match.pk %}">Не удалять</a>
+</form>
+{% endblock %}
